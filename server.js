@@ -22,18 +22,18 @@ const connection = mysql.createConnection({
 
 connection.connect((err) => {
   if (err) {
-    console.error("Ошибка подключения к базе данных: " + err.stack);
+    console.error("Database connection error: " + err.stack);
     return;
   }
-  console.log("Успешное подключение к базе данных");
+  console.log("Successful connection to the database");
 });
 
-// Ручки
+
 app.get("/getData", (req, res) => {
   connection.query("SELECT * FROM resources", (error, results, fields) => {
     if (error) {
-      console.error("Ошибка выполнения запроса: " + error.stack);
-      res.status(500).send("Произошла ошибка при выполнении запроса");
+      console.error("Request execution error: " + error.stack);
+      res.status(500).send("An error occurred while executing the request");
       return;
     }
 
@@ -111,22 +111,22 @@ app.delete("/clearData", (req, res) => {
     const query = "UPDATE resources SET ping = NULL, nodes = NULL";
     connection.query(query, (error, results, fields) => {
       if (error) {
-        console.error("Ошибка выполнения запроса: " + error.stack);
-        res.status(500).send("Произошла ошибка при выполнении запроса");
+        console.error("Request execution error: " + error.stack);
+        res.status(500).send("An error occurred while executing the request");
         return;
       }
       console.log(
-        "Значения столбцов ping и nodes успешно очищены для всех записей"
+        "The values of the ping and nodes columns have been successfully cleared for all records"
       );
       res
         .status(200)
         .send(
-          "Значения столбцов ping и nodes успешно очищены для всех записей"
+          "The values of the ping and nodes columns have been successfully cleared for all records"
         );
     });
   } catch (error) {
-    console.error("Ошибка при очистке данных:", error);
-    res.status(500).json({ error: "Ошибка при очистке данных" });
+    console.error("Error when clearing data:", error);
+    res.status(500).json({ error: "Error when clearing data" });
   }
 });
 
@@ -161,37 +161,34 @@ app.delete("/deleteData/:id", (req, res) => {
 
 app.get("/api/ping", async (req, res) => {
   try {
-    // Получаем все записи из базы данных
     connection.query(
       "SELECT * FROM resources",
       async (error, results, fields) => {
         if (error) {
-          console.error("Ошибка выполнения запроса:", error);
-          return res.status(500).json({ error: "Ошибка выполнения запроса" });
+          console.error("Request execution error:", error);
+          return res.status(500).json({ error: "Request execution error" });
         }
 
-        // Перебираем каждую запись и проверяем ping
         for (const resource of results) {
           const { id, ip } = resource;
-          await pingAndUpdate(id, ip, res); // Функция для проверки ping и обновления записи в БД
+          await pingAndUpdate(id, ip, res); 
         }
 
         console.log(
-          "Ping успешно проверен и записан в базу данных для всех записей"
+          "Ping has been successfully verified and recorded in the database for all records"
         );
         res.json({
           message:
-            "Ping успешно проверен и записан в базу данных для всех записей",
+            "Ping has been successfully verified and recorded in the database for all records",
         });
       }
     );
   } catch (error) {
-    console.error("Ошибка при проверке ping:", error);
-    res.status(500).json({ error: "Ошибка при проверке ping" });
+    console.error("Ping verification error:", error);
+    res.status(500).json({ error: "Ping verification error" });
   }
 });
 
-// Функция для выполнения операции ping и обновления значения в базе данных
 async function pingAndUpdate(id, host, res) {
   if (!host) {
     console.error("Hostname is required");
@@ -199,42 +196,35 @@ async function pingAndUpdate(id, host, res) {
   }
 
   try {
-    const result = await ping.promise.probe(host); // Выполняем операцию ping
+    const result = await ping.promise.probe(host); 
 
     let pingValue;
     if (result.alive) {
-      pingValue = result.time ? result.time : 0; // Если хост живой, записываем время, иначе 1
+      pingValue = result.time ? result.time : 0; 
     } else {
-      pingValue = 0; // Если ресурс недоступен, устанавливаем значение 0
+      pingValue = 0;
     }
 
-    // Обновляем значение ping в базе данных
     updatePingInDatabase(id, pingValue, res);
   } catch (error) {
     console.error("Error during ping:", error);
-    // Обрабатываем ошибку здесь, если необходимо
-    // Например, устанавливаем значение 0 в случае ошибки
     updatePingInDatabase(id, 0, res);
   }
 }
 
-// Функция для обновления значения ping в БД
 function updatePingInDatabase(id, ping, res) {
   const query = "UPDATE resources SET ping = ? WHERE id = ?";
   connection.query(query, [ping, id], (error, results, fields) => {
     if (error) {
-      console.error("Ошибка при обновлении значения ping в БД:", error);
+      console.error("Error updating the ping value in the database:", error);
     } else {
-      console.log(`Значение ping для записи с id ${id} успешно обновлено в БД`);
+      console.log(`The ping value for the record with id ${id} has been successfully updated in the database`);
     }
   });
 }
 
-
-// Функция для выполнения трассировки маршрута
 app.get("/api/traceroute", async (req, res) => {
   try {
-    // Fetch all records from the database
     connection.query(
       "SELECT * FROM resources",
       async (error, results, fields) => {
@@ -243,7 +233,6 @@ app.get("/api/traceroute", async (req, res) => {
           return res.status(500).json({ error: "Error executing query" });
         }
 
-        // Создаем массив промисов для операций трассировки маршрута
         const traceroutePromises = results.map(async (resource) => {
           const { id, ip } = resource;
           try {
@@ -254,7 +243,6 @@ app.get("/api/traceroute", async (req, res) => {
           }
         });
 
-        // Ожидаем завершения всех операций трассировки маршрута
         await Promise.all(traceroutePromises);
 
         console.log("Traceroute completed for all IPs");
@@ -267,13 +255,11 @@ app.get("/api/traceroute", async (req, res) => {
   }
 });
 
-// Функция для выполнения трассировки маршрута
 async function performTraceroute(ip) {
   return new Promise((resolve, reject) => {
     if (!ip || ip.trim() === "") {
-      // Check if IP address is empty
       console.log("Empty IP detected. Skipping traceroute.");
-      resolve([]); // Return empty array if IP address is empty
+      resolve([]); 
       return;
     }
 
@@ -283,7 +269,6 @@ async function performTraceroute(ip) {
     tracer
       .on("hop", (hop) => {
         if (hop.ip !== "") {
-          // Exclude hops with empty IP addresses
           hops.push(hop);
         }
       })
@@ -300,17 +285,16 @@ async function performTraceroute(ip) {
   });
 }
 
-// Function to save traceroute results to the database
 async function saveTracerouteResults(id, hops) {
   return new Promise((resolve, reject) => {
     const query = "UPDATE resources SET nodes = ? WHERE id = ?";
     connection.query(query, [hops.length, id], (error, results, fields) => {
       if (error) {
-        console.error("Ошибка при обновлении значения ping в БД:", error);
+        console.error("Error updating the ping value in the database:", error);
         reject(error);
       } else {
         console.log(
-          `Значение traceroute для записи с id ${id} успешно обновлено в БД`
+          `The traceroute value for the record with id ${id} has been successfully updated in the database`
         );
         resolve(results);
       }
